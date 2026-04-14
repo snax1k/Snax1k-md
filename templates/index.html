@@ -58,11 +58,31 @@
         select { background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px; border-radius: 4px; outline: none; cursor: pointer; }
 
         .container { display: flex; flex: 1; overflow: hidden; padding: 16px; gap: 16px; }
-        .editor-pane, .preview-pane { flex: 1; display: flex; flex-direction: column; background: var(--bg-panel); border-radius: 8px; box-shadow: var(--shadow); border: 1px solid var(--border-color); overflow: hidden; }
-        
+        /* Общие стили рамок и фона для обеих панелей */
+        .editor-pane, .preview-pane { 
+            flex: 1; 
+            background: var(--bg-panel); 
+            border-radius: 8px; 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border-color); 
+        }
+
+        /* Редактор остается flex-контейнером, чтобы текстовое поле тянулось на 100% высоты */
+        .editor-pane { 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+        }
+
         textarea { flex: 1; width: 100%; resize: none; border: none; outline: none; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: transparent; color: var(--text-main); padding: 20px; box-sizing: border-box; }
         
-        .preview-pane { padding: 20px 30px; overflow-y: auto; line-height: 1.7; }
+        /* Предпросмотр становится обычным блоком (display: block), чтобы контент внутри не сплющивался */
+        .preview-pane { 
+            display: block; 
+            padding: 20px 30px; 
+            overflow-y: auto; 
+            line-height: 1.7; 
+        }
         
         /* Стили Markdown с подсветкой */
         #preview h1, #preview h2 { border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
