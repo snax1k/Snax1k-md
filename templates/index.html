@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD Editor Pro</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="theme-style">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #f3f4f6; --bg-panel: #ffffff; --text-main: #1f2937;
+            --text-muted: #6b7280; --header-bg: #1e293b; --header-text: #f8fafc;
+            --border-color: #e5e7eb; --accent: #3b82f6; --accent-hover: #2563eb;
+            --code-bg: #f8fafc; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --toolbar-bg: #ffffff; --toolbar-hover: #f1f5f9;
+            --modal-bg: rgba(0,0,0,0.5);
+        }
+
+        [data-theme="dark"] {
+            --bg-main: #0f172a; --bg-panel: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --header-bg: #020617; --header-text: #f8fafc;
+            --border-color: #334155; --accent: #3b82f6; --accent-hover: #60a5fa;
+            --code-bg: #0f172a; --shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+            --toolbar-bg: #1e293b; --toolbar-hover: #334155;
+            --modal-bg: rgba(0,0,0,0.7);
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+        
+        header { background: var(--header-bg); color: var(--header-text); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); z-index: 10; }
+        header .logo { display: flex; align-items: center; height: 100%; color: var(--header-text); }
+        header .logo svg { display: block; }    
+        
+        .controls { display: flex; align-items: center; gap: 10px; }
+        .btn { padding: 8px 16px; cursor: pointer; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .btn:hover { background: var(--accent-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--header-text); }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Панель инструментов */
+        .toolbar { background: var(--toolbar-bg); padding: 8px 16px; display: flex; gap: 6px; border-bottom: 1px solid var(--border-color); align-items: center; flex-wrap: wrap; }
+        .tool-btn { background: transparent; color: var(--text-main); border: 1px solid transparent; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.9rem; }
+        .tool-btn:hover { background: var(--toolbar-hover); border-color: var(--border-color); }
+        .divider { width: 1px; height: 20px; background: var(--border-color); margin: 0 5px; }
+        
+        select { background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px; border-radius: 4px; outline: none; cursor: pointer; }
+
+        .container { display: flex; flex: 1; overflow: hidden; padding: 16px; gap: 16px; }
+        .editor-pane, .preview-pane { flex: 1; display: flex; flex-direction: column; background: var(--bg-panel); border-radius: 8px; box-shadow: var(--shadow); border: 1px solid var(--border-color); overflow: hidden; }
+        
+        textarea { flex: 1; width: 100%; resize: none; border: none; outline: none; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: transparent; color: var(--text-main); padding: 20px; box-sizing: border-box; }
+        
+        .preview-pane { padding: 20px 30px; overflow-y: auto; line-height: 1.7; }
+        
+        /* Стили Markdown с подсветкой */
+        #preview h1, #preview h2 { border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        #preview img { max-width: 100%; border-radius: 6px; box-shadow: var(--shadow); }
+        #preview code { background: var(--code-bg); padding: 3px 6px; border-radius: 4px; color: #ef4444; font-family: monospace; }
+        #preview pre { background: var(--code-bg); border-radius: 8px; overflow-x: auto; margin: 10px 0; border: 1px solid var(--border-color); }
+        #preview pre code { background: transparent; padding: 16px; display: block; border-radius: 0; font-family: 'JetBrains Mono', monospace; }
+        #preview blockquote { border-left: 4px solid var(--accent); margin-left: 0; padding-left: 16px; color: var(--text-muted); font-style: italic; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+        /* Эмодзи пикер */
+        #emoji-picker-container { position: absolute; z-index: 100; display: none; margin-top: 40px; box-shadow: var(--shadow); border-radius: 8px; }
+        
+        /* Индикатор загрузки */
+        .uploading-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); color: white; display: none; align-items: center; justify-content: center; font-weight: bold; z-index: 50; }
+
+        /* Модальное окно подсказок */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); display: none; justify-content: center; align-items: center; z-index: 200; }
+        .modal { background: var(--bg-panel); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: var(--shadow); border: 1px solid var(--border-color); }
+        .modal h2 { margin-top: 0; }
+        .modal table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .modal th, .modal td { padding: 10px; border: 1px solid var(--border-color); text-align: left; }
+        .modal code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; color: #ef4444; }
+        .close-modal { float: right; cursor: pointer; font-size: 1.5rem; color: var(--text-muted); border: none; background: transparent; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" width="160" height="50">
+                <defs>
+                    <linearGradient id="aeroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#10b981" /> <stop offset="100%" stop-color="#3b82f6" /> </linearGradient>
+                </defs>
+
+                <g transform="translate(20, 15)">
+                    <path d="M10 70 L30 10 L50 45 L70 10 L90 70 L72 70 L50 28 L28 70 Z" fill="url(#aeroGradient)" transform="skewX(-15)" />
+                    <path d="M-10 70 L5 70 L25 10 L10 10 Z" fill="#10b981" opacity="0.4" transform="skewX(-15)" />
+                </g>
+
+                <text x="120" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" fill="currentColor" letter-spacing="-1">
+                    Aero<tspan fill="url(#aeroGradient)">MD</tspan>
+                </text>
+            </svg>
+        </div>
+        <div class="controls">
+            <span id="status" style="font-size: 0.85rem; color: #94a3b8; margin-right: 10px;"></span>
+            <button class="btn btn-outline" onclick="document.getElementById('help-modal').style.display='flex'" title="Справка">❓ Справка</button>
+            <button class="btn btn-outline" id="theme-toggle">🌙</button>
+            <button class="btn" onclick="downloadFile()" title="Скачать файл на компьютер">📥 Сохранить (.md)</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <button class="tool-btn" onclick="triggerFileOpen()" title="Открыть локальный .md файл">📂 Открыть</button>
+        <div class="divider"></div>
+        
+        <button class="tool-btn" onclick="insertAtLineStart('# ')" title="Заголовок H1">H1</button>
+        <button class="tool-btn" onclick="insertAtLineStart('## ')" title="Заголовок H2">H2</button>
+        <button class="tool-btn" onclick="insertAtLineStart('- ')" title="Список">• Список</button>
+        <button class="tool-btn" onclick="insertAtLineStart('> ')" title="Цитата">”</button>
+        
+        <div class="divider"></div>
+        
+        <button class="tool-btn" onclick="insertText('**', '**')" title="Жирный"><b>B</b></button>
+        <button class="tool-btn" onclick="insertText('*', '*')" title="Курсив"><i>I</i></button>
+        <button class="tool-btn" onclick="insertText('`', '`')" title="Встроенный код">`code`</button>
+        
+        <div class="divider"></div>
+        
+        <select id="code-lang" onchange="insertCodeBlock()" title="Вставить блок кода">
+            <option value="">+ Блок кода...</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="cpp">C++</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="bash">Bash / Shell</option>
+            <option value="json">JSON</option>
+        </select>
+
+        <div class="divider"></div>
+        <button class="tool-btn" id="emoji-btn" title="Эмодзи">😀</button>
+        <div id="emoji-picker-container"><emoji-picker class="light"></emoji-picker></div>
+        
+        <div class="divider"></div>
+        <button class="tool-btn" onclick="undo()" title="Отменить (Ctrl+Z)">↩ Назад</button>
+        <button class="tool-btn" onclick="redo()" title="Повторить (Ctrl+Y)">↪ Вперед</button>
+        
+        <input type="file" id="fileInput" accept=".md,.txt" style="display: none;">
+    </div>
+
+    <div class="container">
+        <div class="editor-pane" style="position: relative;">
+            <div id="uploading" class="uploading-overlay">Загрузка изображения...</div>
+            <textarea id="editor" oninput="handleInput()" placeholder="Начните писать здесь... (Доступен Drag & Drop изображений)"></textarea>
+        </div>
+        <div class="preview-pane" id="preview"></div>
+    </div>
+
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal">
+            <button class="close-modal" onclick="document.getElementById('help-modal').style.display='none'">×</button>
+            <h2>Шпаргалка Markdown</h2>
+            <table>
+                <tr><th>Результат</th><th>Синтаксис</th></tr>
+                <tr><td><b>Жирный</b></td><td><code>**текст**</code></td></tr>
+                <tr><td><i>Курсив</i></td><td><code>*текст*</code></td></tr>
+                <tr><td>Заголовок 1</td><td><code># Заголовок</code></td></tr>
+                <tr><td>Заголовок 2</td><td><code>## Заголовок</code></td></tr>
+                <tr><td>Ссылка</td><td><code>[Имя](http://...)</code></td></tr>
+                <tr><td>Картинка</td><td><code>![Alt](/url.png)</code></td></tr>
+                <tr><td>Цитата</td><td><code>> текст</code></td></tr>
+                <tr><td>Список</td><td><code>- элемент</code></td></tr>
+            </table>
+            <p style="font-size: 0.9em; color: var(--text-muted);">
+                <b>Горячие клавиши:</b><br>
+                <code>Ctrl + Z</code> — Отменить<br>
+                <code>Ctrl + Y</code> — Повторить<br>
+                <code>Ctrl + S</code> — Сохранить файл<br>
+                <code>Tab</code> — Отступ
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
+        const fileInput = document.getElementById('fileInput');
+
+        // --- Настройка Markdown ---
+        marked.use({
+            breaks: true,
+            gfm: true
+        });
+
+        function updatePreview() { 
+        // Сначала парсим Markdown в HTML
+            preview.innerHTML = marked.parse(editor.value); 
+    
+        // Затем принудительно натравливаем Highlight.js на все блоки кода
+            document.querySelectorAll('#preview pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        // --- Система Отмены (Undo/Redo Stack) ---
+        let historyStack = [];
+        let historyIndex = -1;
+        let isTyping = false;
+        let typingTimeout;
+
+        function saveState() {
+            const val = editor.value;
+            // Если текст не изменился, не сохраняем
+            if (historyIndex >= 0 && historyStack[historyIndex] === val) return;
+            
+            // Если мы откатились назад и делаем новое изменение — отрезаем будущее
+            if (historyIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyIndex + 1);
+            }
+            
+            historyStack.push(val);
+            // Ограничение истории (чтобы не жрать ОЗУ)
+            if (historyStack.length > 50) historyStack.shift(); 
+            else historyIndex++;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                editor.value = historyStack[historyIndex];
+                updatePreview();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                editor.value = historyStack[historyIndex];
+                updatePreview();
+            }
+        }
+
+        function handleInput() {
+            updatePreview();
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => { saveState(); }, 600); // Сохраняем стейт после паузы в печати
+        }
+
+        // Инициализация первого стейта
+        editor.value = "# Добро пожаловать\n\nНапишите функцию `print('Hello')` чтобы увидеть подсветку кода.";
+        saveState();
+        updatePreview();
+
+        // --- Темы и CSS подсветки ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const emojiPicker = document.querySelector('emoji-picker');
+        const themeStyle = document.getElementById('theme-style');
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            themeToggle.textContent = theme === 'light' ? '🌙' : '☀️';
+            emojiPicker.classList.toggle('dark', theme === 'dark');
+            // Меняем тему Highlight.js
+            themeStyle.href = theme === 'light' 
+                ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css' 
+                : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+            localStorage.setItem('theme', theme);
+        }
+        
+        setTheme(localStorage.getItem('theme') || 'light');
+        themeToggle.addEventListener('click', () => {
+            setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+        });
+
+        // --- Инструменты редактора ---
+        
+        // Вставка вокруг выделенного текста (Жирный, Курсив)
+        function insertText(before, after) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+            const selected = text.substring(start, end);
+            
+            editor.value = text.substring(0, start) + before + selected + after + text.substring(end);
+            editor.focus();
+            editor.selectionStart = start + before.length;
+            editor.selectionEnd = end + before.length + selected.length;
+            
+            saveState(); updatePreview();
+        }
+
+        // Вставка в НАЧАЛО текущей строки (Заголовки, Списки)
+        function insertAtLineStart(prefix) {
+            const start = editor.selectionStart;
+            const text = editor.value;
+            
+            // Ищем начало текущей строки
+            let lineStart = text.lastIndexOf('\n', start - 1);
+            lineStart = lineStart === -1 ? 0 : lineStart + 1;
+            
+            editor.value = text.substring(0, lineStart) + prefix + text.substring(lineStart);
+            editor.focus();
+            // Возвращаем курсор на место, сдвинув на длину префикса
+            editor.selectionStart = editor.selectionEnd = start + prefix.length;
+            
+            saveState(); updatePreview();
+        }
+
+        // Вставка блока кода с выбором языка
+        function insertCodeBlock() {
+            const select = document.getElementById('code-lang');
+            const lang = select.value;
+            if(!lang) return;
+            
+            insertText(`\n\`\`\`${lang}\n`, '\n\`\`\`\n');
+            select.value = ""; // Сбрасываем селект
+        }
+
+        // --- Файловая система (Локальная) ---
+        function triggerFileOpen() { fileInput.click(); }
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editor.value = e.target.result;
+                saveState(); updatePreview();
+                status.textContent = `Открыт: ${file.name}`;
+                setTimeout(() => status.textContent = '', 3000);
+            };
+            reader.readAsText(file);
+            fileInput.value = ''; 
+        });
+
+        function downloadFile() {
+            const blob = new Blob([editor.value], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.md';
+            a.click();
+            URL.revokeObjectURL(url);
+            status.textContent = 'Файл сохранен';
+            setTimeout(() => status.textContent = '', 3000);
+        }
+
+        // --- Эмодзи ---
+        const emojiBtn = document.getElementById('emoji-btn');
+        const emojiContainer = document.getElementById('emoji-picker-container');
+        
+        emojiBtn.addEventListener('click', () => {
+            emojiContainer.style.display = emojiContainer.style.display === 'none' || emojiContainer.style.display === '' ? 'block' : 'none';
+        });
+
+        document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+            insertText(event.detail.unicode, '');
+            emojiContainer.style.display = 'none';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!emojiBtn.contains(e.target) && !emojiContainer.contains(e.target)) {
+                emojiContainer.style.display = 'none';
+            }
+            if (e.target.id === 'help-modal') {
+                document.getElementById('help-modal').style.display = 'none';
+            }
+        });
+
+        // --- Изображения (Drag & Drop + Paste) ---
+        async function uploadImage(file) {
+            if (!file.type.startsWith('image/')) return;
+            
+            document.getElementById('uploading').style.display = 'flex';
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                // Бэкенд по-прежнему отвечает за сохранение картинок
+                const response = await fetch('/api/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.url) {
+                    insertText(`![${file.name}](${data.url})\n`, '');
+                }
+            } catch (err) {
+                alert('Ошибка загрузки. Убедитесь, что бэкенд запущен.');
+            } finally {
+                document.getElementById('uploading').style.display = 'none';
+            }
+        }
+
+        editor.addEventListener('paste', e => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    uploadImage(item.getAsFile());
+                }
+            }
+        });
+
+        editor.addEventListener('dragover', e => { e.preventDefault(); editor.style.background = 'var(--toolbar-hover)'; });
+        editor.addEventListener('dragleave', e => { e.preventDefault(); editor.style.background = 'transparent'; });
+        editor.addEventListener('drop', e => {
+            e.preventDefault();
+            editor.style.background = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                uploadImage(e.dataTransfer.files[0]);
+            }
+        });
+
+        // --- Синхронизация и Горячие клавиши ---
+        editor.addEventListener('scroll', () => {
+            const percent = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+            preview.scrollTop = percent * (preview.scrollHeight - preview.clientHeight);
+        });
+
+        editor.addEventListener('keydown', e => {
+            if (e.key === 'Tab') { 
+                e.preventDefault(); 
+                insertText('  ', ''); 
+            }
+            if (e.ctrlKey && (e.key === 'z' || e.key === 'я')) { 
+                e.preventDefault(); 
+                undo(); 
+            }
+            if (e.ctrlKey && (e.key === 'y' || e.key === 'н')) { 
+                e.preventDefault(); 
+                redo(); 
+            }
+            if (e.ctrlKey && (e.key === 's' || e.key === 'ы')) { 
+                e.preventDefault(); 
+                downloadFile(); 
+            }
+        });
+    </script>
+</body>
+</html>

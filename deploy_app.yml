@@ -1,0 +1,26 @@
+---
+- name: Развертывание проекта через Docker Compose
+  hosts: webservers
+  become: yes
+
+  vars:
+    project_dir: "/opt/my_web_app"
+
+  tasks:
+    - name: Создать директорию для проекта
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Скопировать docker-compose.yml на сервер
+      ansible.builtin.copy:
+        src: ./files/docker-compose.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+
+    - name: Убедиться, что сервис запущен (docker compose up -d)
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        state: present

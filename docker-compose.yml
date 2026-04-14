@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  md-editor:
+    build: .
+    container_name: markdown_editor
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # Прокидываем локальную папку data внутрь контейнера
+      - ./data:/app/data
