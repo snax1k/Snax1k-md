@@ -124,7 +124,7 @@
         ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 
         /* Эмодзи пикер */
-        #emoji-picker-container { position: absolute; z-index: 100; display: none; margin-top: 40px; box-shadow: var(--shadow); border-radius: 8px; }
+        #emoji-picker-container { position: absolute; top: 100%; left: 0; z-index: 100; display: none; margin-top: 8px; box-shadow: var(--shadow); border-radius: 8px; }
         
         /* Индикатор загрузки */
         .uploading-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); color: white; display: none; align-items: center; justify-content: center; font-weight: bold; z-index: 50; }
@@ -196,8 +196,10 @@
         </select>
 
         <div class="divider"></div>
-        <button class="tool-btn" id="emoji-btn" title="Эмодзи">😀</button>
-        <div id="emoji-picker-container"><emoji-picker class="light"></emoji-picker></div>
+        <div style="position: relative; display: flex; align-items: center;">
+            <button class="tool-btn" id="emoji-btn" title="Эмодзи">😀</button>
+            <div id="emoji-picker-container"><emoji-picker class="light"></emoji-picker></div>
+        </div>
         
         <div class="divider"></div>
         <button class="tool-btn" onclick="undo()" title="Отменить (Ctrl+Z)">↩ Назад</button>
